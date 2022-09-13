@@ -4,6 +4,7 @@ import User from "../models/userModel.js"
 import jwt from 'jsonwebtoken'
 import crypto from 'crypto'
 import sendEmail from "../utils/sendEmail.js"
+import { sendToken } from "../utils/sendToken.js"
 
 // New User Registration controller
 export const newUser = async (req, res, next) => {
@@ -11,8 +12,8 @@ export const newUser = async (req, res, next) => {
     try {
         // const { avatar } = req.files;
 
-        let user = await User.findOne({ email })
-        if (user) {
+        let foundUser = await User.findOne({ email })
+        if (foundUser) {
             return next(new ErrorResponse("User already exisits", 400))
         }
 
@@ -23,7 +24,7 @@ export const newUser = async (req, res, next) => {
             .digest("hex")
         console.log(otp)
 
-        user = await User.create({
+        foundUser = await User.create({
             username,
             email,
             password,
@@ -35,25 +36,20 @@ export const newUser = async (req, res, next) => {
             otp_expiry: Date.now() + process.env.OTP_EXPIRE * 60 * 1000
         });
 
-        const resetToken = user.otp
-
-        const resetUrl = "TODO"
-        const message = "TODO"
+        const message = `Your OTP is ${otp}`
 
         await sendEmail(
             email, "Verify Your Accout", message
         )
 
-        res.status(201).json({
-            success: true,
-            user: {
-                id: user._id,
-                username: user.username,
-                message: "Please verify your email to continue."
-            }
-        });
+        sendToken(
+            res,
+            foundUser,
+            201,
+            "OTP sent to your email, please verify your account"
+        )
     } catch (error) {
-        next(error);
+        next(new ErrorResponse("Sorry account could not be created.", 400))
     }
 };
 
@@ -78,15 +74,11 @@ export const verify = async (req, res, next) => {
             username: foundUser.username,
             id: foundUser._id,
         }
-        const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE });
+        // const token = "Bearer " + jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE });
 
-        res.status(201).json({
-            success: true,
-            message: "Email Verified successfully",
-            token: "Bearer " + token,
-        });
+        sendToken(res, foundUser, 200, "Account Verified");
     } catch (error) {
-        next(error);
+        next(new ErrorResponse("Sorry e-mail not verified", 400))
     }
 };
 
@@ -108,23 +100,17 @@ export const login = async (req, res, next) => {
 
         if (!isMatch) {
             return next(new ErrorResponse("Invalid credentials", 404));
-        } else {
-            const payload = {
-                username: foundUser.username,
-                id: foundUser._id,
-            }
-            const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE });
-
-            res.status(200).json({
-                success: true,
-                message: "Logged in successfully",
-                token: "Bearer " + token,
-            });
         }
+        // const payload = {
+        //     username: foundUser.username,
+        //     id: foundUser._id,
+        // }
+        // const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE });
 
+        sendToken(res, foundUser, 200, "Login Successful");
 
     } catch (error) {
-        next(error);
+        return next(new ErrorResponse("Login attemp un-successful", 400))
     }
 };
 

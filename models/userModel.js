@@ -67,11 +67,11 @@ userSchema.pre("save", async function (next) {
     next();
 });
 
-// userSchema.methods.getJWTToken = function () {
-//     return jwt.sign({ _id: this._id }, process.env.JWT_SECRET, {
-//         expiresIn: process.env.JWT_COOKIE_EXPIRE * 24 * 60 * 60 * 1000,
-//     });
-// };
+userSchema.methods.getJWTToken = function () {
+    return jwt.sign({ _id: this._id, username: this.username }, process.env.JWT_SECRET, {
+        expiresIn: process.env.JWT_COOKIE_EXPIRE * 24 * 60 * 60 * 1000,
+    });
+};
 
 userSchema.methods.comparePassword = async function (password) {
     return await bcrypt.compareSync(password, this.password);
