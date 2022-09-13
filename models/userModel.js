@@ -2,7 +2,7 @@ import { randomBytes, createHash } from 'crypto';
 import mongoose, { Schema, model } from "mongoose";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import sendEmail from '../utils/sendEmail.js';
+// import sendEmail from '../utils/sendEmail.js';
 
 
 const userSchema = new Schema({
@@ -67,11 +67,11 @@ userSchema.pre("save", async function (next) {
     next();
 });
 
-userSchema.methods.getJWTToken = function () {
-    return jwt.sign({ _id: this._id }, process.env.JWT_SECRET, {
-        expiresIn: process.env.JWT_COOKIE_EXPIRE * 24 * 60 * 60 * 1000,
-    });
-};
+// userSchema.methods.getJWTToken = function () {
+//     return jwt.sign({ _id: this._id }, process.env.JWT_SECRET, {
+//         expiresIn: process.env.JWT_COOKIE_EXPIRE * 24 * 60 * 60 * 1000,
+//     });
+// };
 
 userSchema.methods.comparePassword = async function (password) {
     return await bcrypt.compareSync(password, this.password);
@@ -85,7 +85,7 @@ userSchema.methods.getResetPasswordToken = function () {
     this.resetPasswordOtpExpiry = Date.now() + 6000 * (60 * 1000)
 }
 
-// userSchema.index({ otp_expiry: 1 }, { expireAfterSeconds: 0 });
+userSchema.index({ otp_expiry: 1 }, { expireAfterSeconds: 0 });
 
 const User = mongoose.model("User", userSchema);
 export default User;
