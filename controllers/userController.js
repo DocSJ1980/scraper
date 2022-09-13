@@ -178,3 +178,17 @@ export const resetPassword = async (req, res, next) => {
         next(new ErrorResponse("Email not found", 400))
     }
 };
+
+export const logout = async (req, res) => {
+    try {
+        res
+            .status(200)
+            .cookie("token", null, {
+                expires: new Date(Date.now()),
+            })
+            .json({ success: true, message: "Logged out successfully" });
+    } catch (error) {
+        next(new ErrorResponse("Failed to logout", 400))
+
+    }
+};
