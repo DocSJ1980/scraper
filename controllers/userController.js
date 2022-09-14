@@ -1,7 +1,6 @@
 // Imports
 import ErrorResponse from "../utils/Error.js"
 import User from "../models/userModel.js"
-import jwt from 'jsonwebtoken'
 import crypto from 'crypto'
 import sendEmail from "../utils/sendEmail.js"
 import { sendToken } from "../utils/sendToken.js"
@@ -33,7 +32,7 @@ export const newUser = async (req, res, next) => {
                 url: ""
             },
             otp,
-            otp_expiry: Date.now() + process.env.OTP_EXPIRE * 60 * 1000
+            otp_expiry: Date.now() + process.env.OTP_EXPIRE * 60 * 60 * 1000
         });
 
         const message = `Your OTP is ${otp}`
@@ -56,9 +55,9 @@ export const newUser = async (req, res, next) => {
 // Email Verification controller
 export const verify = async (req, res, next) => {
     try {
-        const email = req.params.e;
-        const otp = req.params.vt;
-        let foundUser = await User.findOne({ email })
+        const { otp } = req.body
+
+        let foundUser = await User.findById(req.user._id)
         if (foundUser.otp !== otp || foundUser.otp_expiry < Date.now()) {
             return res
                 .status(400)
@@ -69,12 +68,7 @@ export const verify = async (req, res, next) => {
         foundUser.otp_expiry = null;
 
         await foundUser.save();
-
-        const payload = {
-            username: foundUser.username,
-            id: foundUser._id,
-        }
-        // const token = "Bearer " + jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE });
+        console.log(foundUser)
 
         sendToken(res, foundUser, 200, "Account Verified");
     } catch (error) {
@@ -92,6 +86,7 @@ export const login = async (req, res, next) => {
 
     try {
         const foundUser = await User.findOne({ email }).select("+password");
+        console.log(foundUser)
         if (!foundUser) {
             return next(new ErrorResponse("Invalid credentials", 401));
         };
@@ -179,16 +174,91 @@ export const resetPassword = async (req, res, next) => {
     }
 };
 
-export const logout = async (req, res) => {
+// Logout Controller
+export const logout = async (req, res, next) => {
     try {
         res
             .status(200)
-            .cookie("token", null, {
-                expires: new Date(Date.now()),
-            })
+            .clearCookie("token")
             .json({ success: true, message: "Logged out successfully" });
     } catch (error) {
         next(new ErrorResponse("Failed to logout", 400))
 
+    }
+};
+
+// Get profile controller
+export const getMyProfile = async (req, res, next) => {
+    try {
+        const foundUser = await User.findById(req.user._id);
+
+        sendToken(res, foundUser, 201, `Welcome back ${foundUser.username}`);
+    } catch (error) {
+        next(new ErrorResponse("Failed to load profile", 400))
+    }
+};
+
+// Update Profile Controller
+export const updateProfile = async (req, res, next) => {
+    try {
+        const foundUser = await User.findById(req.user._id);
+
+        const { username } = req.body;
+        //   const avatar = req.files.avatar.tempFilePath;
+
+        if (username) foundUser.username = username;
+        //   if (avatar) {
+        //     await cloudinary.v2.uploader.destroy(user.avatar.public_id);
+
+        //     const mycloud = await cloudinary.v2.uploader.upload(avatar);
+
+        // fs.rmSync("./tmp", { recursive: true });
+
+        // user.avatar = {
+        //   public_id: mycloud.public_id,
+        //   url: mycloud.secure_url,
+        // };
+        //   }
+
+        await foundUser.save();
+
+        res
+            .status(200)
+            .json({ success: true, message: "Profile Updated successfully" });
+    } catch (error) {
+        next(new ErrorResponse("Failed to update profile", 400))
+
+    }
+};
+
+// Update Password Controller
+export const updatePassword = async (req, res, next) => {
+    try {
+        const foundUser = await User.findById(req.user._id).select("+password");
+        const { oldPassword, newPassword } = req.body;
+
+        if (!oldPassword || !newPassword) {
+            return res
+                .status(400)
+                .json({ success: false, message: "Please enter all fields" });
+        }
+
+        const isMatch = await foundUser.comparePassword(oldPassword);
+
+        if (!isMatch) {
+            return res
+                .status(400)
+                .json({ success: false, message: "Invalid Old Password" });
+        }
+
+        foundUser.password = newPassword;
+
+        await foundUser.save();
+
+        res
+            .status(200)
+            .json({ success: true, message: "Password Updated successfully" });
+    } catch (error) {
+        next(new ErrorResponse("Failed to update password", 400))
     }
 };

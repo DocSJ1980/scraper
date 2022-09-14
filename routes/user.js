@@ -1,21 +1,23 @@
 // Imports (express, named imports from userControlller)
 import express from "express"
-import { login, newUser, forgotPassword, resetPassword, verify, logout } from "../controllers/userController.js"
-// import passport from 'passport'
-// import { passportAuthenticate } from '../utils/passports.js'
-// passportAuthenticate(passport)
+import { login, newUser, forgotPassword, resetPassword, verify, logout, getMyProfile, updateProfile, updatePassword } from "../controllers/userController.js"
+import { isAuthenticated } from "../middleware/auth.js";
 
 // Consts (initializing router)
 const router = express.Router()
 
-// Routes (newUser, verify)
+// User Routes
 router.post("/new", newUser)
-router.get("/verify/:e/:vt", verify);
 router.post("/login", login)
 router.get("/logout", logout)
 router.post("/forgotpassword", forgotPassword)
 router.post("/restpassword", resetPassword)
-// router.get("/protected", passport.authenticate('jwt', { session: false }), protected)
+
+// Protected user routes
+router.post("/verify", isAuthenticated, verify);
+router.get("/me", isAuthenticated, getMyProfile);
+router.post("/updateprofile", isAuthenticated, updateProfile);
+router.post("/updatepassword", isAuthenticated, updatePassword);
 
 // Export (default)
 export default router
