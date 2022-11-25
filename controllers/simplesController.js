@@ -88,3 +88,30 @@ export const deleteSimpleActivity = async (req, res) => {
         return next(new ErrorResponse("Failed to delete simple activity", 400))
     }
 }
+
+// Fifth Route: batch submit simples activities
+export const batchSimples = async (req, res, next) => {
+    const { allActivities } = req.body
+    // console.log(allActivities)
+    try {
+        // const insertedSimples = await SimpleActivity.insertMany(allActivities)
+        const countActivities = allActivities.length
+        let i = 0
+        let notSubmitted = 0
+        let activitySubmitted = 0
+        while (i < countActivities) {
+            try {
+                await SimpleActivity.create(allActivities[i])
+                activitySubmitted++
+                console.log("Submitted: ", activitySubmitted)
+            } catch (error) {
+                notSubmitted++
+                console.log("Not Submitte: ", notSubmitted)
+            }
+            i++
+        }
+        return res.status(200).json(`Activities submitted = ${activitySubmitted} Activities not submitted = ${notSubmitted}`)
+    } catch (error) {
+        return next(new ErrorResponse("Failed to batch submit simple activities", 400))
+    }
+}
